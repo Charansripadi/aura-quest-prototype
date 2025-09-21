@@ -380,21 +380,7 @@ function Dashboard() {
   );
 }
 
-/* ---------- AvatarDisplay (kept small, used in Dashboard if needed) ---------- */
-function AvatarDisplay({ mood }: { mood: string }) {
-  const moodMap: Record<string, { bg: string; face: string }> = {
-    happy: { bg: "bg-amber-300", face: ":)" },
-    neutral: { bg: "bg-slate-300", face: ":|" },
-    sad: { bg: "bg-sky-200", face: ":(" },
-    tired: { bg: "bg-purple-200", face: ":/" },
-  };
-  const current = moodMap[mood] || moodMap.neutral;
-  return (
-    <div className={`w-40 h-40 rounded-full flex items-center justify-center ${current.bg} text-3xl font-bold mt-4`}>
-      <div>{current.face}</div>
-    </div>
-  );
-}
+
 
 /* ---------- Mini Game ---------- */
 function MiniGame() {
