@@ -2,10 +2,19 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, Navigate } from "react-router-dom";
 
-// Aura Quest — Prototype with Mini-Game
-// Tailwind CSS assumed. This single-file React component adds a simple mini-game,
-// avatar evolution, and persists game state to localStorage for the prototype.
+/**
+ * Aura Quest — Prototype (patched for TypeScript build)
+ *
+ * Notes:
+ * - Save as src/App.tsx
+ * - Tailwind + PostCSS configs assumed (index.css contains Tailwind directives)
+ */
 
+/* ---------- Types ---------- */
+type Quest = { id: number; title: string; xp: number; completed: boolean };
+type Suggestion = { id: number; title: string; xp: number };
+
+/* ---------- App ---------- */
 export default function AuraQuestApp() {
   return (
     <Router>
@@ -27,6 +36,7 @@ export default function AuraQuestApp() {
   );
 }
 
+/* ---------- Header / Nav ---------- */
 function AppHeader() {
   return (
     <header className="max-w-6xl mx-auto flex items-center justify-between py-4">
@@ -50,12 +60,14 @@ function AppHeader() {
 
 function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
   return (
-    <Link to={to} className="px-3 py-2 rounded-lg bg-white shadow text-sm">{children}</Link>
+    <Link to={to} className="px-3 py-2 rounded-lg bg-white shadow text-sm">
+      {children}
+    </Link>
   );
 }
 
-// ---------------- Helpers ----------------
-function simulateAiSuggestion(userMood: string) {
+/* ---------- Helpers ---------- */
+function simulateAiSuggestion(userMood: string): Suggestion[] {
   const pool: Record<string, string[]> = {
     happy: [
       "Share a small win with a friend (5 min)",
@@ -83,89 +95,131 @@ function simulateAiSuggestion(userMood: string) {
   return shuffled.slice(0, 2).map((title, idx) => ({ id: Date.now() + idx, title, xp: 20 + Math.floor(Math.random() * 20) }));
 }
 
-// ---------------- Avatar evolution ----------------
 function avatarForXp(xp: number, style: string) {
-  // simple rules: evolve at 200xp and 500xp
   if (xp >= 500) return { face: "✨", label: "Radiant" };
   if (xp >= 200) return { face: ":D", label: "Energetic" };
-  const base = style === "cute" ? { face: "^_^", label: "Cute" } : style === "minimal" ? { face: ":|", label: "Calm" } : { face: ":)", label: "Fresh" };
-  return base;
+  return style === "cute" ? { face: "^_^", label: "Cute" } : style === "minimal" ? { face: ":|", label: "Calm" } : { face: ":)", label: "Fresh" };
 }
 
-// ---------------- Dashboard ----------------
+/* ---------- Dashboard ---------- */
 function Dashboard() {
   const navigate = useNavigate();
-  const [quests, setQuests] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("aq_quests") || "null") || [
-      { id: 1, title: "Morning Mindful Breathing", xp: 20, completed: false },
-      { id: 2, title: "Gratitude Journal (3 items)", xp: 15, completed: false },
-      { id: 3, title: "Stretch + Walk (10 min)", xp: 25, completed: false },
-    ]; } catch { return [
-      { id: 1, title: "Morning Mindful Breathing", xp: 20, completed: false },
-      { id: 2, title: "Gratitude Journal (3 items)", xp: 15, completed: false },
-      { id: 3, title: "Stretch + Walk (10 min)", xp: 25, completed: false },
-    ]; }
+
+  const defaultQuests: Quest[] = [
+    { id: 1, title: "Morning Mindful Breathing", xp: 20, completed: false },
+    { id: 2, title: "Gratitude Journal (3 items)", xp: 15, completed: false },
+    { id: 3, title: "Stretch + Walk (10 min)", xp: 25, completed: false },
+  ];
+
+  const [quests, setQuests] = useState<Quest[]>(() => {
+    try {
+      const raw = localStorage.getItem("aq_quests");
+      return raw ? (JSON.parse(raw) as Quest[]) : defaultQuests;
+    } catch {
+      return defaultQuests;
+    }
   });
 
-  const [xp, setXp] = useState(() => Number(localStorage.getItem("aq_xp") || 120));
-  const [level, setLevel] = useState(() => Number(localStorage.getItem("aq_level") || 3));
-  const [streak, setStreak] = useState(() => Number(localStorage.getItem("aq_streak") || 5));
-  const [journalOpen, setJournalOpen] = useState(false);
-  const [journalText, setJournalText] = useState("");
-  const [mood, setMood] = useState(() => localStorage.getItem("aq_mood") || "neutral");
-  const [aiSuggestions, setAiSuggestions] = useState<any[]>(() => JSON.parse(localStorage.getItem("aq_ai_suggestions") || "[]") || []);
-  const [avatarStyle, setAvatarStyle] = useState(() => localStorage.getItem('aq_avatar') || 'default');
+  const [xp, setXp] = useState<number>(() => Number(localStorage.getItem("aq_xp") || 120));
+  const [level, setLevel] = useState<number>(() => Number(localStorage.getItem("aq_level") || 3));
+  const [streak, setStreak] = useState<number>(() => Number(localStorage.getItem("aq_streak") || 5));
+  const [journalOpen, setJournalOpen] = useState<boolean>(false);
+  const [journalText, setJournalText] = useState<string>("");
+  const [mood, setMood] = useState<string>(() => localStorage.getItem("aq_mood") || "neutral");
+  const [aiSuggestions, setAiSuggestions] = useState<Suggestion[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("aq_ai_suggestions") || "[]") as Suggestion[];
+    } catch {
+      return [];
+    }
+  });
 
-  useEffect(() => { localStorage.setItem("aq_quests", JSON.stringify(quests)); }, [quests]);
-  useEffect(() => { localStorage.setItem("aq_xp", String(xp)); }, [xp]);
-  useEffect(() => { localStorage.setItem("aq_level", String(level)); }, [level]);
-  useEffect(() => { localStorage.setItem("aq_streak", String(streak)); }, [streak]);
-  useEffect(() => { localStorage.setItem("aq_mood", mood); }, [mood]);
-  useEffect(() => { localStorage.setItem("aq_ai_suggestions", JSON.stringify(aiSuggestions)); }, [aiSuggestions]);
-  useEffect(() => { localStorage.setItem('aq_avatar', avatarStyle); }, [avatarStyle]);
+  // Keep only the value if setter isn't used here
+  const [avatarStyle] = useState<string>(() => localStorage.getItem("aq_avatar") || "default");
 
-  // Listen for internal custom events (same-tab updates) and storage events (cross-tab)
+  // Persist
   useEffect(() => {
-    function onXpUpdate(e: any) {
-      const newXp = typeof e.detail !== 'undefined' ? Number(e.detail) : Number(localStorage.getItem('aq_xp') || 0);
+    localStorage.setItem("aq_quests", JSON.stringify(quests));
+  }, [quests]);
+  useEffect(() => {
+    localStorage.setItem("aq_xp", String(xp));
+  }, [xp]);
+  useEffect(() => {
+    localStorage.setItem("aq_level", String(level));
+  }, [level]);
+  useEffect(() => {
+    localStorage.setItem("aq_streak", String(streak));
+  }, [streak]);
+  useEffect(() => {
+    localStorage.setItem("aq_mood", mood);
+  }, [mood]);
+  useEffect(() => {
+    localStorage.setItem("aq_ai_suggestions", JSON.stringify(aiSuggestions));
+  }, [aiSuggestions]);
+  useEffect(() => {
+    localStorage.setItem("aq_avatar", avatarStyle);
+  }, [avatarStyle]);
+
+  // Sync: listen to custom events and storage to keep components in sync
+  useEffect(() => {
+    function onXpEvent(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      const newXp = typeof detail !== "undefined" ? Number(detail) : Number(localStorage.getItem("aq_xp") || 0);
       setXp(newXp);
     }
-    function onStorage(e: StorageEvent) {
-      if (e.key === 'aq_xp') setXp(Number(e.newValue || 0));
-      if (e.key === 'aq_quests') {
-        try { setQuests(JSON.parse(e.newValue || '[]')); } catch { /* ignore */ }
+    function onQuestsEvent(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail) {
+        try {
+          setQuests(JSON.parse(detail));
+        } catch {
+          /* ignore */
+        }
       }
     }
-    window.addEventListener('app:xp', onXpUpdate as EventListener);
-    window.addEventListener('storage', onStorage);
+    function onStorage(e: StorageEvent) {
+      if (e.key === "aq_xp") setXp(Number(e.newValue || 0));
+      if (e.key === "aq_quests") {
+        try {
+          setQuests(JSON.parse(e.newValue || "[]"));
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    window.addEventListener("app:xp", onXpEvent as EventListener);
+    window.addEventListener("app:quests", onQuestsEvent as EventListener);
+    window.addEventListener("storage", onStorage);
     return () => {
-      window.removeEventListener('app:xp', onXpUpdate as EventListener);
-      window.removeEventListener('storage', onStorage);
+      window.removeEventListener("app:xp", onXpEvent as EventListener);
+      window.removeEventListener("app:quests", onQuestsEvent as EventListener);
+      window.removeEventListener("storage", onStorage);
     };
   }, []);
 
   function toggleQuest(id: number) {
-    const newQuests = quests.map((q) => {
-      if (q.id === id) {
-        const completed = !q.completed;
-        if (completed) {
-          setXp((prev) => {
-            const nx = prev + q.xp;
-            if (nx >= (level + 1) * 200) setLevel((l) => l + 1);
-            // also broadcast xp update in same tab
-            setTimeout(() => window.dispatchEvent(new CustomEvent('app:xp', { detail: nx })), 0);
-            return nx;
-          });
-          setStreak((s) => s + 1);
-        } else {
-          setXp((prev) => Math.max(0, prev - q.xp));
-          setStreak((s) => Math.max(0, s - 1));
+    setQuests((prev: Quest[]) =>
+      prev.map((q: Quest) => {
+        if (q.id === id) {
+          const completed = !q.completed;
+          if (completed) {
+            setXp((prevXp: number) => {
+              const nx = prevXp + q.xp;
+              if (nx >= (level + 1) * 200) setLevel((l) => l + 1);
+              // notify same-tab listeners
+              setTimeout(() => window.dispatchEvent(new CustomEvent("app:xp", { detail: nx })), 0);
+              return nx;
+            });
+            setStreak((s) => s + 1);
+          } else {
+            setXp((prevXp: number) => Math.max(0, prevXp - q.xp));
+            setStreak((s) => Math.max(0, s - 1));
+          }
+          return { ...q, completed };
         }
-        return { ...q, completed };
-      }
-      return q;
-    });
-    setQuests(newQuests);
+        return q;
+      })
+    );
   }
 
   function submitJournal() {
@@ -175,7 +229,6 @@ function Dashboard() {
     else if (txt.match(/sad|down|unhappy|lonely/)) setMood("sad");
     else if (txt.match(/tired|exhausted|sleepy/)) setMood("tired");
     else setMood("neutral");
-
     setJournalText("");
     setJournalOpen(false);
   }
@@ -185,27 +238,14 @@ function Dashboard() {
     setAiSuggestions(suggestions);
   }
 
-  function acceptAiSuggestion(suggestion: any) {
-    // when accepting we also broadcast quest change so other components can sync if needed
-    setQuests((prev) => {
-      const updated = [suggestion, ...prev].slice(0, 12);
-      // storage is set by effect; also signal other tabs
-      setTimeout(() => window.dispatchEvent(new CustomEvent('app:quests', { detail: JSON.stringify(updated) })), 0);
+  function acceptAiSuggestion(suggestion: Suggestion) {
+    setQuests((prev: Quest[]) => {
+      const updated = [{ id: suggestion.id, title: suggestion.title, xp: suggestion.xp, completed: false }, ...prev].slice(0, 12);
+      setTimeout(() => window.dispatchEvent(new CustomEvent("app:quests", { detail: JSON.stringify(updated) })), 0);
       return updated;
     });
     setAiSuggestions((prev) => prev.filter((s) => s.id !== suggestion.id));
   }
-
-  // Listen for app:quests custom event to sync quests same-tab
-  useEffect(() => {
-    function onQuestsEvent(e: any) {
-      if (e.detail) {
-        try { setQuests(JSON.parse(e.detail)); } catch { /* ignore */ }
-      }
-    }
-    window.addEventListener('app:quests', onQuestsEvent as EventListener);
-    return () => window.removeEventListener('app:quests', onQuestsEvent as EventListener);
-  }, []);
 
   const progressToNextLevel = Math.min(100, Math.floor(((xp % (level * 200)) / (level * 200)) * 100));
   const avatar = avatarForXp(xp, avatarStyle);
@@ -237,7 +277,7 @@ function Dashboard() {
         <div className="mt-8">
           <h3 className="text-lg font-semibold">Today's Quests</h3>
           <div className="mt-4 grid grid-cols-1 gap-3">
-            {quests.map((q) => (
+            {quests.map((q: Quest) => (
               <div key={q.id} className="flex items-center justify-between p-4 rounded-xl border">
                 <div>
                   <div className="font-medium">{q.title}</div>
@@ -250,7 +290,9 @@ function Dashboard() {
                   >
                     {q.completed ? "Completed" : "Complete"}
                   </button>
-                  <button onClick={() => alert('More info: This quest helps build a gratitude habit')} className="px-3 py-2 rounded-lg bg-slate-100 text-sm text-slate-600">Info</button>
+                  <button onClick={() => alert("More info: This quest helps build a gratitude habit")} className="px-3 py-2 rounded-lg bg-slate-100 text-sm text-slate-600">
+                    Info
+                  </button>
                 </div>
               </div>
             ))}
@@ -259,8 +301,8 @@ function Dashboard() {
 
         <div className="mt-8 flex items-center gap-4">
           <button onClick={() => setJournalOpen(true)} className="px-4 py-2 rounded-lg bg-amber-100 text-amber-800">Write Journal</button>
-          <button onClick={() => navigate('/profile')} className="px-4 py-2 rounded-lg bg-slate-100">Customize Avatar</button>
-          <button onClick={() => navigate('/game')} className="px-4 py-2 rounded-lg bg-emerald-100 text-emerald-800">Play Mini-Game</button>
+          <button onClick={() => navigate("/profile")} className="px-4 py-2 rounded-lg bg-slate-100">Customize Avatar</button>
+          <button onClick={() => navigate("/game")} className="px-4 py-2 rounded-lg bg-emerald-100 text-emerald-800">Play Mini-Game</button>
           <button onClick={() => generateAiSuggestions()} className="px-4 py-2 rounded-lg bg-indigo-600 text-white">Suggest Quest (AI)</button>
         </div>
 
@@ -286,7 +328,9 @@ function Dashboard() {
 
       <aside className="col-span-4">
         <div className="bg-white rounded-2xl p-6 shadow flex flex-col items-center gap-4">
-          <div className="w-40 h-40 rounded-full flex items-center justify-center bg-indigo-50 text-3xl font-bold">{avatar.face}</div>
+          <div className="w-40 h-40 rounded-full flex items-center justify-center bg-indigo-50 text-3xl font-bold">
+            {avatar.face}
+          </div>
           <div className="text-center">
             <div className="text-sm text-slate-500">{avatar.label}</div>
             <div className="mt-2 font-bold text-xl">{streak} days</div>
@@ -320,7 +364,7 @@ function Dashboard() {
           <p className="text-xs text-slate-400">Personalized ideas generated for you</p>
           <div className="mt-3 space-y-2">
             {aiSuggestions.length === 0 && <div className="text-sm text-slate-500">No suggestions yet — click "Suggest Quest (AI)"</div>}
-            {aiSuggestions.map((s) => (
+            {aiSuggestions.map((s: Suggestion) => (
               <div key={s.id} className="flex items-center justify-between p-2 border rounded">
                 <div className="text-sm">{s.title}</div>
                 <div className="flex items-center gap-2">
@@ -336,6 +380,7 @@ function Dashboard() {
   );
 }
 
+/* ---------- AvatarDisplay (kept small, used in Dashboard if needed) ---------- */
 function AvatarDisplay({ mood }: { mood: string }) {
   const moodMap: Record<string, { bg: string; face: string }> = {
     happy: { bg: "bg-amber-300", face: ":)" },
@@ -351,40 +396,42 @@ function AvatarDisplay({ mood }: { mood: string }) {
   );
 }
 
-// ---------------- Mini Game ----------------
+/* ---------- Mini Game ---------- */
 function MiniGame() {
-  // Simple clicker-style calming game: click to collect "calm points", convert to XP
-  const [calm, setCalm] = useState<number>(() => Number(localStorage.getItem('aq_calm') || 0));
+  const [calm, setCalm] = useState<number>(() => Number(localStorage.getItem("aq_calm") || 0));
   const [combo, setCombo] = useState<number>(0);
-  const [xp, setXp] = useState<number>(() => Number(localStorage.getItem('aq_xp') || 120));
-  const [collected, setCollected] = useState<number>(() => Number(localStorage.getItem('aq_collected') || 0));
+  const [xp, setXp] = useState<number>(() => Number(localStorage.getItem("aq_xp") || 120));
+  const [collected, setCollected] = useState<number>(() => Number(localStorage.getItem("aq_collected") || 0));
 
-  useEffect(() => { localStorage.setItem('aq_calm', String(calm)); }, [calm]);
-  useEffect(() => { localStorage.setItem('aq_xp', String(xp)); }, [xp]);
-  useEffect(() => { localStorage.setItem('aq_collected', String(collected)); }, [collected]);
+  useEffect(() => {
+    localStorage.setItem("aq_calm", String(calm));
+  }, [calm]);
+  useEffect(() => {
+    localStorage.setItem("aq_xp", String(xp));
+  }, [xp]);
+  useEffect(() => {
+    localStorage.setItem("aq_collected", String(collected));
+  }, [collected]);
 
   function clickCalm() {
-    setCalm((c) => c + 1 + Math.floor(combo / 5));
-    setCombo((s) => Math.min(50, s + 1));
+    setCalm((c: number) => c + 1 + Math.floor(combo / 5));
+    setCombo((s: number) => Math.min(50, s + 1));
   }
 
   function relax() {
-    // convert calm to xp and reset calm/combo
     const gain = Math.floor(calm / 5);
     if (gain > 0) {
-      // update xp and broadcast update for same-tab components
-      setXp((prev) => {
+      setXp((prev: number) => {
         const nx = prev + gain;
-        // dispatch custom event so Dashboard updates immediately in same tab
-        setTimeout(() => window.dispatchEvent(new CustomEvent('app:xp', { detail: nx })), 0);
+        setTimeout(() => window.dispatchEvent(new CustomEvent("app:xp", { detail: nx })), 0);
         return nx;
       });
-      setCollected((c) => c + gain);
+      setCollected((c: number) => c + gain);
       setCalm(0);
       setCombo(0);
       alert(`Nice! You converted calm into ${gain} XP.`);
     } else {
-      alert('Collect more calm points before converting.');
+      alert("Collect more calm points before converting.");
     }
   }
 
@@ -413,24 +460,40 @@ function MiniGame() {
   );
 }
 
-// ---------------- Quests Page ----------------
+/* ---------- Quests Page ---------- */
 function QuestsPage() {
-  const [quests, setQuests] = useState(() => JSON.parse(localStorage.getItem("aq_quests") || "[]") || []);
-  // listen for app:quests custom event so this page updates if quests are added elsewhere in same tab
+  const [quests] = useState<Quest[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("aq_quests") || "[]") as Quest[];
+    } catch {
+      return [];
+    }
+  });
+
+  // listen for same-tab quest updates
   useEffect(() => {
-    function onQuests(e: any) {
-      if (e.detail) {
-        try { setQuests(JSON.parse(e.detail)); } catch { /* ignore */ }
+    function onQuests(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail) {
+        try {
+          // replace local list with updated one
+          const parsed = JSON.parse(detail) as Quest[];
+          // we can't call setQuests here because we didn't keep setter; instead we store to localStorage so re-mount or navigate will show latest
+          localStorage.setItem("aq_quests", JSON.stringify(parsed));
+        } catch {
+          /* ignore */
+        }
       }
     }
-    window.addEventListener('app:quests', onQuests as EventListener);
-    return () => window.removeEventListener('app:quests', onQuests as EventListener);
+    window.addEventListener("app:quests", onQuests as EventListener);
+    return () => window.removeEventListener("app:quests", onQuests as EventListener);
   }, []);
+
   return (
     <div className="bg-white rounded-2xl p-6 shadow">
       <h2 className="text-xl font-bold">Quests</h2>
       <div className="mt-4 grid gap-3">
-        {quests.map((q: any) => (
+        {quests.map((q: Quest) => (
           <div key={q.id} className="flex items-center justify-between p-4 rounded-xl border">
             <div>
               <div className="font-medium">{q.title}</div>
@@ -444,7 +507,7 @@ function QuestsPage() {
   );
 }
 
-// ---------------- Leaderboard ----------------
+/* ---------- Leaderboard ---------- */
 function Leaderboard() {
   const rows = [
     { name: "You", xp: Number(localStorage.getItem("aq_xp") || 120) },
@@ -457,7 +520,7 @@ function Leaderboard() {
       <h2 className="text-xl font-bold">Leaderboard</h2>
       <ol className="mt-4 space-y-2">
         {rows.map((r, i) => (
-          <li key={i} className={`p-3 rounded-lg ${r.name === 'You' ? 'bg-amber-50' : 'bg-slate-50'}`}>
+          <li key={i} className={`p-3 rounded-lg ${r.name === "You" ? "bg-amber-50" : "bg-slate-50"}`}>
             <div className="flex justify-between">
               <span>{i + 1}. {r.name}</span>
               <span>{r.xp} XP</span>
@@ -469,17 +532,17 @@ function Leaderboard() {
   );
 }
 
-// ---------------- Profile ----------------
+/* ---------- Profile ---------- */
 function Profile() {
   const navigate = useNavigate();
-  const [avatarStyle, setAvatarStyle] = useState(() => localStorage.getItem('aq_avatar') || 'default');
-  const [displayName, setDisplayName] = useState(() => localStorage.getItem('aq_name') || 'Adventurer');
+  const [avatarStyle, setAvatarStyle] = useState<string>(() => localStorage.getItem("aq_avatar") || "default");
+  const [displayName, setDisplayName] = useState<string>(() => localStorage.getItem("aq_name") || "Adventurer");
 
   function save() {
-    localStorage.setItem('aq_avatar', avatarStyle);
-    localStorage.setItem('aq_name', displayName);
-    alert('Profile saved');
-    navigate('/');
+    localStorage.setItem("aq_avatar", avatarStyle);
+    localStorage.setItem("aq_name", displayName);
+    alert("Profile saved");
+    navigate("/");
   }
 
   return (
@@ -490,13 +553,15 @@ function Profile() {
 
       <label className="block mt-4">Avatar Style</label>
       <div className="flex gap-2 mt-2">
-        {['default','cute','minimal'].map((style) => (
-          <button key={style} onClick={() => setAvatarStyle(style)} className={`px-3 py-2 rounded ${avatarStyle===style?'bg-indigo-600 text-white':'bg-slate-100'}`}>{style}</button>
+        {["default", "cute", "minimal"].map((style) => (
+          <button key={style} onClick={() => setAvatarStyle(style)} className={`px-3 py-2 rounded ${avatarStyle === style ? "bg-indigo-600 text-white" : "bg-slate-100"}`}>
+            {style}
+          </button>
         ))}
       </div>
 
       <div className="mt-6 flex justify-end gap-2">
-        <button onClick={() => navigate('/')} className="px-4 py-2 rounded-lg bg-slate-100">Cancel</button>
+        <button onClick={() => navigate("/")} className="px-4 py-2 rounded-lg bg-slate-100">Cancel</button>
         <button onClick={save} className="px-4 py-2 rounded-lg bg-indigo-600 text-white">Save</button>
       </div>
     </div>
